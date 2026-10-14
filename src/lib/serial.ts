@@ -8,6 +8,7 @@ export const usbPortFilters: SerialPortFilter[] = [
   { usbVendorId: 0x303a, usbProductId: 0x0009 } /* ESP32-S3 USB_CDC */,
   { usbVendorId: 0x1a86, usbProductId: 0x55d4 } /* CH9102F */,
   { usbVendorId: 0x1a86, usbProductId: 0x7523 } /* CH340T */,
+  { usbVendorId: 0x1a86, usbProductId: 0x55d3 } /* CH343P (Waveshare ESP32-P4-86-Panel); added by chipguyhere */,
   { usbVendorId: 0x0403, usbProductId: 0x6001 } /* FT232R */,
 ];
 
