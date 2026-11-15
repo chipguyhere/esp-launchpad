@@ -27,6 +27,10 @@ supported_apps = ["YOUR_APP_NAME"]
 
 multipart = true
 
+# (chipguyhere fork) In the app section: erase_all = false writes only the listed
+# parts and keeps the rest of the flash (NVS settings, filesystems).  Default true:
+# the whole chip is erased first.  A confirmation is shown either way.
+
 # Target chip name (REQUIRED when multipart = true)
 # This value is lowercased and used to access: app.image.<chip>.parts/addresses
 # NOTE: This must match the image.<chip> key in the app section below

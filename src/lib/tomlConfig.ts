@@ -111,6 +111,12 @@ export interface MinimalAppConfig {
   console_baudrate?: number | string;
   /** Keyed by lowercased chip name, e.g. `image.esp32.parts`. */
   image?: Record<string, MinimalImageParts>;
+  /**
+   * Erase the whole flash before writing (default true).  false writes only the
+   * listed parts, so anything else on the chip - NVS settings, for one - is kept.
+   * (chipguyhere fork addition.)
+   */
+  erase_all?: boolean;
 }
 
 export interface MinimalPortConnectionOptions {
@@ -246,6 +252,11 @@ export function getMinimalFlashParts(
   const invalid = parts.find((part) => Number.isNaN(part.address));
   if (invalid) return { error: `Invalid flash address for ${invalid.url}.` };
   return { parts };
+}
+
+/** Whether to erase the whole chip before flashing: the app's erase_all, default true. */
+export function getMinimalEraseAll(app: MinimalAppConfig): boolean {
+  return app.erase_all !== false;
 }
 
 /** Console baud rate after flashing: portConnectionOptions wins, then the app value, then 115200. */

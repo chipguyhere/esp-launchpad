@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useEsp } from "../../src/esp/EspContext";
 import {
   getMinimalConsoleBaudrate,
+  getMinimalEraseAll,
   getMinimalFlashParts,
 } from "../../src/lib/tomlConfig";
 import type { MinimalConfigState } from "./useMinimalConfig";
@@ -13,7 +14,7 @@ export const CONNECTION_TIMEOUT_MS = 30000;
 /** Delay before the product-info column bounces to draw attention after flashing. */
 const BOUNCE_DELAY_MS = 2500;
 
-export type FlowPhase = "idle" | "connecting" | "flashing" | "flashed" | "error";
+export type FlowPhase = "idle" | "confirming" | "connecting" | "flashing" | "flashed" | "error";
 
 export type DialogMode = "connecting" | "connection-error" | "flash-error" | "config-error";
 
@@ -41,6 +42,7 @@ export function useMinimalFlow(config: MinimalConfigState) {
   const timerRef = useRef<number | undefined>(undefined);
 
   const ready = config.status === "ok" ? config : null;
+  const eraseAll = ready ? getMinimalEraseAll(ready.app) : true;
   const hasCli = Boolean(ready?.config.portConnectionOptions?.length);
 
   const clearTimer = useCallback(() => {
@@ -79,8 +81,19 @@ export function useMinimalFlow(config: MinimalConfigState) {
     });
   }, [esp, ready]);
 
-  const connectAndFlash = useCallback(async () => {
+  /** Connect clicked: ask first - flashing replaces what's on the board. */
+  const requestConnect = useCallback(() => {
     if (!ready || phase !== "idle") return;
+    setPhase("confirming");
+  }, [phase, ready]);
+
+  const cancelConnect = useCallback(() => {
+    setPhase((current) => (current === "confirming" ? "idle" : current));
+  }, []);
+
+  /** Continue clicked in the confirmation: this click is the gesture the port picker needs. */
+  const connectAndFlash = useCallback(async () => {
+    if (!ready || phase !== "confirming") return;
     setPhase("connecting");
 
     const result = await esp.connect({
@@ -120,7 +133,10 @@ export function useMinimalFlow(config: MinimalConfigState) {
       );
     }
 
-    const flash = await esp.downloadAndFlashParts(resolved.parts, { eraseAll: true });
+    if (!eraseAll) {
+      esp.terminalWriteLine("Writing the firmware parts only; the rest of the flash (saved settings) is kept.");
+    }
+    const flash = await esp.downloadAndFlashParts(resolved.parts, { eraseAll });
     if (!flash.ok) {
       esp.terminalWriteLine(`\x1b[1;31mError: ${flash.error}\x1b[0m`);
       setDialog({ mode: "flash-error", message: flash.error });
@@ -129,7 +145,7 @@ export function useMinimalFlow(config: MinimalConfigState) {
 
     setPhase("flashed");
     await restart();
-  }, [armTimer, clearTimer, esp, phase, ready, restart]);
+  }, [armTimer, clearTimer, eraseAll, esp, phase, ready, restart]);
 
   /** "Wait For Connection": close the dialog and give the handshake another 30 s. */
   const waitForConnection = useCallback(() => {
@@ -147,6 +163,9 @@ export function useMinimalFlow(config: MinimalConfigState) {
     terminalVisible,
     bounce,
     hasCli,
+    eraseAll,
+    requestConnect,
+    cancelConnect,
     connectAndFlash,
     restart,
     waitForConnection,

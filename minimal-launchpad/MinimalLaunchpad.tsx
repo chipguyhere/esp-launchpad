@@ -8,6 +8,7 @@ import { ConnectPanel } from "./components/ConnectPanel";
 import { MinimalConsole } from "./components/MinimalConsole";
 import { ReadmeSheet } from "./components/ReadmeSheet";
 import { TroubleshootDialog } from "./components/TroubleshootDialog";
+import { ConfirmFlashDialog } from "./components/ConfirmFlashDialog";
 
 const EXAMPLE_URL =
   "https://espressif.github.io/esp-launchpad/minimal-launchpad/?flashConfigURL=<YOUR_TOML_FILE_LINK>";
@@ -52,7 +53,8 @@ export function MinimalLaunchpad() {
   const [readmeOpen, setReadmeOpen] = useState(false);
 
   const ready = config.status === "ok" ? config : null;
-  const showConnect = flow.phase === "idle" || flow.phase === "connecting";
+  const showConnect =
+    flow.phase === "idle" || flow.phase === "confirming" || flow.phase === "connecting";
   const showProductInfo = flow.phase === "flashed" && readme.status === "ready" && readme.html !== "";
 
   // The terminal mounts hidden so esptool output is captured from the first byte;
@@ -85,7 +87,7 @@ export function MinimalLaunchpad() {
               onOpenReadme={() => setReadmeOpen(true)}
               connecting={flow.phase === "connecting"}
               disabled={!ready}
-              onConnect={() => void flow.connectAndFlash()}
+              onConnect={flow.requestConnect}
             />
           </div>
         )}
@@ -117,6 +119,13 @@ export function MinimalLaunchpad() {
         tomlFileURL={config.status === "network-error" ? config.tomlFileURL : undefined}
         onWait={flow.waitForConnection}
         onTryAgain={flow.tryAgain}
+      />
+      <ConfirmFlashDialog
+        open={flow.phase === "confirming"}
+        appName={ready?.appName}
+        eraseAll={flow.eraseAll}
+        onCancel={flow.cancelConnect}
+        onContinue={() => void flow.connectAndFlash()}
       />
       <ReadmeSheet open={readmeOpen} onOpenChange={setReadmeOpen} readme={readme} />
     </div>
