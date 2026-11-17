@@ -4,6 +4,8 @@ import {
   getMinimalConsoleBaudrate,
   getMinimalEraseAll,
   getMinimalFlashParts,
+  chipKeyOf,
+  isAutoChip,
 } from "../../src/lib/tomlConfig";
 import type { MinimalConfigState } from "./useMinimalConfig";
 
@@ -23,9 +25,6 @@ export interface DialogState {
   message?: string;
 }
 
-function normalizeChip(name: string): string {
-  return name.replace(/-/g, "").toLowerCase();
-}
 
 /**
  * Orchestrates the one-click minimal flow: connect, flash every part, then
@@ -117,16 +116,18 @@ export function useMinimalFlow(config: MinimalConfigState) {
     setTerminalVisible(true);
     setPhase("flashing");
 
-    const resolved = getMinimalFlashParts(ready.config, ready.app);
+    const resolved = getMinimalFlashParts(ready.config, ready.app, result.chipName);
     if ("error" in resolved) {
       esp.terminalWriteLine(`\x1b[1;31mError: ${resolved.error}\x1b[0m`);
       setDialog({ mode: "flash-error", message: resolved.error });
       return;
     }
-    if (
+    if (isAutoChip(ready.config)) {
+      esp.terminalWriteLine(`Connected chip: ${result.chipName}. Using its build.`);
+    } else if (
       result.chipName &&
       ready.config.chip &&
-      normalizeChip(result.chipName) !== normalizeChip(ready.config.chip)
+      chipKeyOf(result.chipName) !== chipKeyOf(ready.config.chip)
     ) {
       esp.terminalWriteLine(
         `\x1b[1;33mWarning: the connected device is ${result.chipName} but the config targets ${ready.config.chip}.\x1b[0m`,

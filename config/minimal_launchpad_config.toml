@@ -34,6 +34,9 @@ multipart = true
 # Target chip name (REQUIRED when multipart = true)
 # This value is lowercased and used to access: app.image.<chip>.parts/addresses
 # NOTE: This must match the image.<chip> key in the app section below
+# (chipguyhere fork) chip = "auto" picks image.<connected chip> instead (esp32,
+# esp32s3, esp32c5, ... - esptool's name without dashes, lowercased), so one
+# config can carry a build for each chip; a chip with no image is refused.
 chip = "esp32"
 
 # ----------------------------------------------------------------------------

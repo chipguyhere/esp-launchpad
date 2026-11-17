@@ -219,14 +219,30 @@ export interface MinimalFlashPart {
   address: number;
 }
 
+/** "ESP32-S3" -> "esp32s3": the form used in `image.<chip>` keys. */
+export function chipKeyOf(name: string): string {
+  return name.replace(/-/g, "").toLowerCase();
+}
+
+/** Whether the config picks its image by the connected chip (`chip = "auto"`). */
+export function isAutoChip(config: MinimalLaunchpadConfig): boolean {
+  return (config.chip ?? "").toLowerCase() === "auto";
+}
+
 /**
  * Resolves the firmware parts to flash. Mirrors the legacy minimal launchpad:
  * requires `multipart = true` and a root `chip`, then reads
  * `app.image.<chip>.parts` / `.addresses`.
+ *
+ * (chipguyhere fork addition) `chip = "auto"` reads `app.image.<detected>`
+ * instead, where <detected> is the connected chip as esptool names it, without
+ * dashes and lowercased (esp32, esp32s3, esp32c5, ...): one config can then
+ * carry a build for each chip.
  */
 export function getMinimalFlashParts(
   config: MinimalLaunchpadConfig,
   app: MinimalAppConfig,
+  detectedChip?: string,
 ): { parts: MinimalFlashPart[] } | { error: string } {
   if (!config.multipart || !config.chip) {
     return {
@@ -234,7 +250,17 @@ export function getMinimalFlashParts(
         'This TOML is not a minimal launchpad config: it must set multipart = true and chip = "<target>".',
     };
   }
-  const chipKey = config.chip.toLowerCase();
+  let chipKey = config.chip.toLowerCase();
+  if (isAutoChip(config)) {
+    if (!detectedChip) return { error: "The connected chip could not be identified." };
+    chipKey = chipKeyOf(detectedChip);
+    if (!app.image?.[chipKey]) {
+      const offered = Object.keys(app.image ?? {}).join(", ") || "none";
+      return {
+        error: `This firmware isn't made for the connected chip (${detectedChip}). It has builds for: ${offered}.`,
+      };
+    }
+  }
   const image = app.image?.[chipKey];
   if (
     !image ||
